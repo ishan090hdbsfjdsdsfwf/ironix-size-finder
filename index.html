@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IRONIX Size Finder (prototype)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>">
+<style>
+:root{--bg:#efece6;--fg:#161616;--mut:#69645d;--card:#fbfaf7;--line:#d6d1c8;--acc:#8a1c2b;--accfg:#fff;--ok:#1d7a44;--warn:#9a5a00;--bad:#b3261e;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f0f0f;--fg:#efece6;--mut:#a39e96;--card:#1a1a1a;--line:#333;--acc:#c0394b;--ok:#4cc27d;--warn:#e0a040;--bad:#ff7b72}}
+:root[data-theme="dark"]{--bg:#0f0f0f;--fg:#efece6;--mut:#a39e96;--card:#1a1a1a;--line:#333;--acc:#c0394b;--ok:#4cc27d;--warn:#e0a040;--bad:#ff7b72}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Helvetica Neue",Arial,sans-serif}
+main{max-width:30rem;margin:0 auto;padding:1.25rem 1rem 3rem}
+h1{font:800 2.1rem/1 "Arial Narrow","Bahnschrift",Impact,sans-serif;letter-spacing:.01em;margin:.5rem 0 .25rem}
+h2{font-size:1rem;margin:0 0 .5rem}
+.sub{color:var(--mut);margin:0 0 1.25rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
+.lbl{display:block;font-weight:700;margin:1rem 0 .4rem}.lbl:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem}
+button,input{font:inherit;color:inherit}
+.chip,.seg button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:.45rem .9rem;cursor:pointer}
+.chip[aria-pressed="true"],.seg button[aria-pressed="true"]{border-color:var(--acc);background:var(--acc);color:var(--accfg)}
+.dot{display:inline-block;width:.7rem;height:.7rem;border-radius:50%;margin-right:.4rem;border:1px solid var(--mut)}
+.row{display:flex;gap:.5rem;align-items:center}
+input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:.6rem .75rem}
+.seg{display:flex;gap:.25rem}.seg button{padding:.5rem .8rem}
+.hint{color:var(--mut);font-size:.875rem;margin:.4rem 0 0}
+.primary{width:100%;margin-top:1.1rem;border:0;border-radius:8px;background:var(--acc);color:var(--accfg);font-weight:700;padding:.8rem;cursor:pointer}
+.err{color:var(--bad);margin:.6rem 0 0;min-height:1.2em}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.big{font:800 5rem/1 "Arial Narrow","Bahnschrift",Impact,sans-serif;margin:.25rem 0}
+.note{margin:.4rem 0}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.sizes{display:flex;gap:.5rem;margin:.75rem 0}
+.sz{flex:1;text-align:center;border:1px solid var(--line);border-radius:8px;padding:.5rem 0}
+.sz.pick{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc);font-weight:700}
+.sz.out{color:var(--mut);text-decoration:line-through}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:.35rem .25rem;border-bottom:1px solid var(--line)}
+#toast{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:.6rem 1rem;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<main>
+  <h1>Find my size</h1>
+  <p class="sub">The Keeper ribbed tank. Prototype with sample stock.</p>
+
+  <section class="card">
+    <span class="lbl">Colour</span>
+    <div class="chips" id="colours" role="group" aria-label="Colour"></div>
+
+    <label class="lbl" for="chest">Chest measurement</label>
+    <div class="row">
+      <input id="chest" inputmode="decimal" placeholder="e.g. 39" autocomplete="off">
+      <div class="seg" id="unit" role="group" aria-label="Unit">
+        <button data-u="in" aria-pressed="true">in</button>
+        <button data-u="cm" aria-pressed="false">cm</button>
+      </div>
+    </div>
+    <p class="hint">Measure around the fullest part of your chest, under the arms.</p>
+
+    <span class="lbl">How do you want it to fit?</span>
+    <div class="chips" id="fit" role="group" aria-label="Fit">
+      <button class="chip" data-f="snug" aria-pressed="true">Body-hugging (as designed)</button>
+      <button class="chip" data-f="relaxed" aria-pressed="false">Roomier (size up)</button>
+    </div>
+
+    <button class="primary" id="go">Find my size</button>
+    <p class="err" id="err" role="alert"></p>
+  </section>
+
+  <section class="card" id="out" hidden aria-live="polite"></section>
+
+  <section class="card">
+    <h2>Size chart (chest, inches)</h2>
+    <table id="chart"></table>
+    <p class="hint">Taken from the product page. Note that L (40–42) and XL (40–44) overlap, which the finder resolves by closest midpoint.</p>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+// ---- Data (in Shopify: size chart from a metafield, stock from product.variants) ----
+const SIZES = [
+  { s: 'S',  lo: 36, hi: 38 },
+  { s: 'M',  lo: 38, hi: 40 },
+  { s: 'L',  lo: 40, hi: 42 },
+  { s: 'XL', lo: 40, hi: 44 }
+];
+const PRODUCTS = [
+  { id: 'black',  name: 'Black',  hex: '#111111', stock: { S: 5, M: 3, L: 8, XL: 2 } },
+  { id: 'white',  name: 'White',  hex: '#f2f2f2', stock: { S: 4, M: 0, L: 6, XL: 1 } },
+  { id: 'green',  name: 'Green',  hex: '#1f6b4a', stock: { S: 2, M: 5, L: 0, XL: 0 } },
+  { id: 'maroon', name: 'Maroon', hex: '#6d1a28', stock: { S: 0, M: 0, L: 3, XL: 4 } }
+];
+const HARD_MIN = 35, HARD_MAX = 45;   // outside this: no recommendation
+const TIE = 0.25;                     // inches: "between two sizes" threshold
+
+const state = { colour: 'black', unit: 'in', fit: 'snug', cart: 0, last: null };
+const $ = id => document.getElementById(id);
+
+// ---- Core logic ----
+function recommend(chestIn, fit) {
+  if (chestIn < HARD_MIN || chestIn > HARD_MAX) return { status: 'out_of_range' };
+  const ranked = SIZES.map((z, i) => ({ i, d: Math.abs(chestIn - (z.lo + z.hi) / 2) }))
+                      .sort((a, b) => a.d - b.d || a.i - b.i);
+  const [a, b] = ranked;
+  let idx = a.i, note = '';
+  if (Math.abs(a.d - b.d) <= TIE) {                 // edge case: between two sizes
+    const lo = Math.min(a.i, b.i), hi = Math.max(a.i, b.i);
+    idx = fit === 'snug' ? lo : hi;
+    note = `You’re between ${SIZES[lo].s} and ${SIZES[hi].s}. We picked ${SIZES[idx].s} for your fit preference.`;
+  } else if (fit === 'relaxed') {                   // product note: size up for a roomier fit
+    if (idx === SIZES.length - 1) note = 'XL is our largest size, so it will still sit close.';
+    else idx += 1;
+  }
+  if (chestIn < SIZES[0].lo || chestIn > SIZES[SIZES.length - 1].hi)
+    note += ' Your measurement is at the edge of our range.';
+  return { status: 'ok', idx, note: note.trim() };
+}
+
+// Edge case: recommended size sold out -> nearest in-stock size (prefer larger on ties)
+function pickInStock(idx, stock) {
+  if (stock[SIZES[idx].s] > 0) return { idx, swapped: false };
+  const order = SIZES.map((_, i) => i).filter(i => i !== idx)
+    .sort((a, b) => Math.abs(a - idx) - Math.abs(b - idx) || b - a);
+  const found = order.find(i => stock[SIZES[i].s] > 0);
+  return found === undefined ? { idx: null } : { idx: found, swapped: true };
+}
+
+// ---- UI ----
+function renderColours() {
+  const box = $('colours'); box.textContent = '';
+  PRODUCTS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.setAttribute('aria-pressed', p.id === state.colour);
+    const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = p.hex;
+    b.append(dot, p.name);
+    b.onclick = () => { state.colour = p.id; renderColours(); if (state.last) show(state.last); };
+    box.append(b);
+  });
+}
+function renderChart() {
+  $('chart').innerHTML = '<tr><th>Size</th><th>Chest</th></tr>' +
+    SIZES.map(z => `<tr><td>${z.s}</td><td>${z.lo}–${z.hi}</td></tr>`).join('');
+}
+function setPressed(containerId, attr, value) {
+  document.querySelectorAll(`#${containerId} button`).forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset[attr] === value));
+}
+function line(cls, text) {
+  const p = document.createElement('p'); p.className = 'note ' + cls; p.textContent = text; return p;
+}
+function show(r) {
+  const out = $('out'); out.hidden = false; out.textContent = '';
+  const prod = PRODUCTS.find(p => p.id === state.colour);
+  if (r.status === 'out_of_range') {
+    out.append(line('bad', 'Your measurement is outside our size range (35–45 in). Message our support team and we’ll help you find the right fit.'));
+    return;
+  }
+  const pick = pickInStock(r.idx, prod.stock);
+  const h = document.createElement('div'); h.className = 'big';
+  h.textContent = pick.idx === null ? '–' : SIZES[pick.idx].s;
+  out.append(h);
+  if (r.note) out.append(line('warn', r.note));
+  if (pick.idx === null) out.append(line('bad', `${prod.name} is sold out in every size. Try another colour.`));
+  else if (pick.swapped) out.append(line('warn', `${SIZES[r.idx].s} is sold out in ${prod.name}. Closest size in stock: ${SIZES[pick.idx].s}.`));
+  else out.append(line('ok', `${SIZES[pick.idx].s} is in stock in ${prod.name}.`));
+
+  const row = document.createElement('div'); row.className = 'sizes';
+  SIZES.forEach((z, i) => {
+    const d = document.createElement('div');
+    d.className = 'sz' + (i === pick.idx ? ' pick' : '') + (prod.stock[z.s] === 0 ? ' out' : '');
+    d.textContent = z.s; row.append(d);
+  });
+  out.append(row);
+  if (pick.idx !== null) {
+    const add = document.createElement('button'); add.className = 'primary';
+    add.textContent = `Add ${prod.name}, ${SIZES[pick.idx].s} to cart`;
+    add.onclick = () => { state.cart++; toast(`Added ${prod.name}, ${SIZES[pick.idx].s}. Demo cart: ${state.cart}`); };
+    out.append(add);
+  }
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function submit() {
+  const err = $('err'); err.textContent = '';
+  const raw = $('chest').value.trim().replace(',', '.');
+  const n = Number(raw);
+  if (!raw || !Number.isFinite(n) || n <= 0) { err.textContent = 'Enter your chest measurement as a number, for example 39.'; return; }
+  const inches = state.unit === 'cm' ? n / 2.54 : n;
+  state.last = recommend(inches, state.fit);
+  show(state.last);
+}
+
+$('go').onclick = submit;
+$('chest').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+$('unit').onclick = e => { const u = e.target.dataset.u; if (u) { state.unit = u; setPressed('unit', 'u', u); } };
+$('fit').onclick = e => { const f = e.target.dataset.f; if (f) { state.fit = f; setPressed('fit', 'f', f); if (state.last) submit(); } };
+renderColours(); renderChart();
+</script>
+</body>
+</html>
