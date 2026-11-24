@@ -1,4 +1,3 @@
-# ironix-size-finder
 # IRONIX Size Finder (prototype)
 
 Part 2 of the IRONIX web development assessment. A single-file demo of a "Find my size" tool for The Keeper ribbed tank.
