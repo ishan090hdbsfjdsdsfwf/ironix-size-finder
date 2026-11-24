@@ -63,5 +63,3 @@ No build step. Either:
 6. Switch to cm (for example 99 cm).
 7. Explain the Shopify integration steps above.
 
-## AI disclosure
-I used Claude (Anthropic) to help draft the audit, the proposals and the code. I reviewed everything, tested the recommendation logic against edge-case inputs, and can explain each part. Product facts (size chart, return policy, prices) come from the public ironix.in pages.
